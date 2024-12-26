@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "fs": "^0.0.1-security",
+    "mysql2": "^3.12.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "zip-lib": "^1.0.5"
+  },
+  "name": "db_back_up",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
