@@ -103,7 +103,7 @@ const cleanUp = (files) => {
 };
 
 // Asosiy funksiya
-const runBackup = async () => {
+const runBackup1 = async () => {
   try {
     console.log("Getting databases...");
     const databases = await getDatabases();
@@ -129,6 +129,40 @@ const runBackup = async () => {
     console.error("Error during backup process:", error);
   }
 };
+
+const runBackup = async () => {
+  try {
+    // Har bir backup jarayonida yangi sana va fayl nomini yaratish
+    let date = new Date().toLocaleDateString().replaceAll(',', '').replaceAll('/', '-').replaceAll(':', '_');
+    let backUpFileName = `backup-${date}.zip`;
+    console.log(date);
+    console.log(backUpFileName);
+
+    console.log("Getting databases...");
+    const databases = await getDatabases();
+
+    console.log("Backing up databases...");
+    const backupFiles = [];
+    for (const db of databases) {
+      const backupFile = await backupDatabase(db);
+      backupFiles.push(backupFile);
+    }
+
+    console.log("Creating archive...");
+    const zipPath = await createArchiveWithPassword(backupFiles);
+
+    console.log("Sending to Telegram...");
+    await sendToTelegram(zipPath);
+
+    console.log("Cleaning up...");
+    cleanUp([...backupFiles, zipPath]);
+
+    console.log("Backup process completed successfully!");
+  } catch (error) {
+    console.error("Error during backup process:", error);
+  }
+};
+
 
 // Har 24 soatda avtomatik ishlashi uchun interval
 setInterval(runBackup, 24 * 60 * 60 * 1000); // 24 soat
