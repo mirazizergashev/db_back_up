@@ -1,29 +1,13 @@
 const mysql = require("mysql2/promise");
 const { exec } = require("child_process");
-// const archiver = require("archiver");
-// const { ZipFile } = require('zip-lib');
 const fs = require("fs");
 const TelegramBot = require("node-telegram-bot-api");
 require('dotenv').config();
 
-// let date = new Date().toLocaleDateString().replaceAll(',','').replaceAll('/','-').replaceAll(':','_')
-// let backUpFileName = `backup-${date}.zip`
-// console.log(date)
-// console.log(backUpFileName)
-
 // Telegram sozlamalari
-const BOT_TOKEN = process.env.BOT_TOKEN
-const TG_USER_ID = process.env.TG_USER_ID
-const password = process.env.ZIP_PASSWORD // Zip fayl uchun parol
-
-const bot = new TelegramBot(BOT_TOKEN, { polling: false });
-
-// MySQL sozlamalari
-const dbConfig = {
-  host: process.env.DB_HOST ,
-  user: process.env.DB_USER ,
-  password: process.env.DB_PASSWORD ,
-};
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const TG_USER_ID = process.env.TG_USER_ID;
+const password = process.env.ZIP_PASSWORD;
 
 // Backup papka
 const backupDir = "./backups";
@@ -31,11 +15,13 @@ if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
 
 // Ma'lumotlar bazalarini olish
 const getDatabases = async () => {
-  const connection = await mysql.createConnection(dbConfig);
+  const connection = await mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+  });
   const [rows] = await connection.query("SHOW DATABASES");
   await connection.end();
-
-  // Tizim bazalarini olib tashlash
   return rows
     .map(row => row.Database)
     .filter(db => !["information_schema", "mysql", "performance_schema", "sys"].includes(db));
@@ -45,7 +31,7 @@ const getDatabases = async () => {
 const backupDatabase = (database) => {
   return new Promise((resolve, reject) => {
     const fileName = `${backupDir}/${database}.sql`;
-    const dumpCommand = `mysqldump -u ${dbConfig.user} -p${dbConfig.password} ${database} > ${fileName}`;
+    const dumpCommand = `mysqldump -u ${process.env.DB_USER} -p${process.env.DB_PASSWORD} ${database} > ${fileName}`;
     exec(dumpCommand, (err) => {
       if (err) return reject(err);
       resolve(fileName);
@@ -53,35 +39,16 @@ const backupDatabase = (database) => {
   });
 };
 
-// Arxiv yaratish  -- BU pasrolsiz yaratish qismi
-const createArchive = (files) => {
+// Zip faylni yaratish va parol bilan himoya qilish
+const createArchiveWithPassword = (files, backUpFileName) => {
   return new Promise((resolve, reject) => {
     const zipPath = `${backupDir}/${backUpFileName}`;
-    const output = fs.createWriteStream(zipPath);
-    const archive = archiver("zip", { zlib: { level: 9 } });
-
-    output.on("close", () => resolve(zipPath));
-    archive.on("error", (err) => reject(err));
-
-    archive.pipe(output);
-    files.forEach(file => archive.file(file, { name: file.split("/").pop() }));
-    archive.finalize();
-  });
-};
-
-// Zip faylni yaratish va parol bilan himoya qilish  (-- Only installed 7-Zip and added Path)
-const createArchiveWithPassword = (files,backUpFileName) => {
-  return new Promise((resolve, reject) => {
-    const zipPath = `${backupDir}/${backUpFileName}`;
-
-    // 7zip orqali zip yaratish va parol qo'yish
     const command = `7z a -p${password} ${zipPath} ${files.join(' ')}`;
     exec(command, (err, stdout, stderr) => {
       if (err) {
         console.error("Error creating zip with password:", stderr);
         return reject(err);
       }
-      console.log("Archive created successfully!");
       resolve(zipPath);
     });
   });
@@ -90,10 +57,10 @@ const createArchiveWithPassword = (files,backUpFileName) => {
 // Zaxirani Telegramga yuborish
 const sendToTelegram = async (zipPath) => {
   try {
+    const bot = new TelegramBot(BOT_TOKEN, { polling: false });
     await bot.sendDocument(TG_USER_ID, zipPath, { caption: "📦 Daily MySQL Backup" });
-    console.log("Backup sent to Telegram successfully!");
   } catch (error) {
-    console.error("Failed to send backup to Telegram:", "error");
+    console.error("Failed to send backup to Telegram:", error);
   }
 };
 
@@ -102,41 +69,28 @@ const cleanUp = (files) => {
   files.forEach(file => fs.unlinkSync(file));
 };
 
-
+// Zaxiralash jarayonini ishga tushirish
 const runBackup = async () => {
   try {
-    // Har bir backup jarayonida yangi sana va fayl nomini yaratish
     let date = new Date().toLocaleDateString().replaceAll(',', '').replaceAll('/', '-').replaceAll(':', '_');
     let backUpFileName = `backup-${date}.zip`;
-    console.log(date);
-    console.log(backUpFileName);
+    console.log(`Backup started: ${date}`);
 
-    console.log("Getting databases...");
     const databases = await getDatabases();
-
-    console.log("Backing up databases...");
     const backupFiles = [];
     for (const db of databases) {
       const backupFile = await backupDatabase(db);
       backupFiles.push(backupFile);
     }
 
-    console.log("Creating archive...");
-    const zipPath = await createArchiveWithPassword(backupFiles,backUpFileName);
-
-    console.log("Sending to Telegram...");
+    const zipPath = await createArchiveWithPassword(backupFiles, backUpFileName);
     await sendToTelegram(zipPath);
-
-    console.log("Cleaning up...");
     cleanUp([...backupFiles, zipPath]);
 
-    console.log("Backup process completed successfully!");
+    console.log("Backup completed successfully!");
   } catch (error) {
     console.error("Error during backup process:", error);
   }
 };
 
-
-// // Har 24 soatda avtomatik ishlashi uchun interval
-// setInterval(runBackup, 24 * 60 * 60 * 1000); // 24 soat
-runBackup(); // Birinchi marta ishga tushirish
+runBackup();
