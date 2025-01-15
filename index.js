@@ -70,7 +70,7 @@ const createArchive = (files) => {
 };
 
 // Zip faylni yaratish va parol bilan himoya qilish  (-- Only installed 7-Zip and added Path)
-const createArchiveWithPassword = (files) => {
+const createArchiveWithPassword = (files,backUpFileName) => {
   return new Promise((resolve, reject) => {
     const zipPath = `${backupDir}/${backUpFileName}`;
 
@@ -122,7 +122,7 @@ const runBackup = async () => {
     }
 
     console.log("Creating archive...");
-    const zipPath = await createArchiveWithPassword(backupFiles);
+    const zipPath = await createArchiveWithPassword(backupFiles,backUpFileName);
 
     console.log("Sending to Telegram...");
     await sendToTelegram(zipPath);
