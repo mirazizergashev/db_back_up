@@ -6,10 +6,10 @@ const fs = require("fs");
 const TelegramBot = require("node-telegram-bot-api");
 require('dotenv').config();
 
-let date = new Date().toLocaleDateString().replaceAll(',','').replaceAll('/','-').replaceAll(':','_')
-let backUpFileName = `backup-${date}.zip`
-console.log(date)
-console.log(backUpFileName)
+// let date = new Date().toLocaleDateString().replaceAll(',','').replaceAll('/','-').replaceAll(':','_')
+// let backUpFileName = `backup-${date}.zip`
+// console.log(date)
+// console.log(backUpFileName)
 
 // Telegram sozlamalari
 const BOT_TOKEN = process.env.BOT_TOKEN
@@ -102,33 +102,6 @@ const cleanUp = (files) => {
   files.forEach(file => fs.unlinkSync(file));
 };
 
-// Asosiy funksiya
-const runBackup1 = async () => {
-  try {
-    console.log("Getting databases...");
-    const databases = await getDatabases();
-
-    console.log("Backing up databases...");
-    const backupFiles = [];
-    for (const db of databases) {
-      const backupFile = await backupDatabase(db);
-      backupFiles.push(backupFile);
-    }
-
-    console.log("Creating archive...");
-    const zipPath = await createArchiveWithPassword(backupFiles);
-
-    console.log("Sending to Telegram...");
-    await sendToTelegram(zipPath);
-
-    console.log("Cleaning up...");
-    cleanUp([...backupFiles, zipPath]);
-
-    console.log("Backup process completed successfully!");
-  } catch (error) {
-    console.error("Error during backup process:", error);
-  }
-};
 
 const runBackup = async () => {
   try {
