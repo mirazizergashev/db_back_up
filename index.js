@@ -137,6 +137,6 @@ const runBackup = async () => {
 };
 
 
-// Har 24 soatda avtomatik ishlashi uchun interval
-setInterval(runBackup, 24 * 60 * 60 * 1000); // 24 soat
+// // Har 24 soatda avtomatik ishlashi uchun interval
+// setInterval(runBackup, 24 * 60 * 60 * 1000); // 24 soat
 runBackup(); // Birinchi marta ishga tushirish
